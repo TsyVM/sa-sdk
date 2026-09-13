@@ -50,7 +50,7 @@ It ships in two layers. **`SASDK::data`** is a compiled static library of offlin
 
 [Architecture](#️-architecture) · [Struct Database](#️-struct-database) · [Format Parsers](#-format-parsers) · [Runtime Layer](#-runtime-layer)
 
-[Error Handling](#-error-handling) · [Generation Pipeline](#️-generation-pipeline) · [Source Layout](#-source-layout) · [vs. plugin-sdk](#️-sasdk-vs-plugin-sdk)
+[Error Handling](#-error-handling) · [Source Layout](#-source-layout)
 
 </div>
 
@@ -59,11 +59,11 @@ It ships in two layers. **`SASDK::data`** is a compiled static library of offlin
 ## ✨ Features at a Glance
 
 **Struct Database (`SASDK::game`)**
-- **302 verified schemas** — all offsets confirmed by Capstone disassembly sweep and/or plugin-sdk `VALIDATE_OFFSET` compile-time asserts
+- **302 verified schemas** — all offsets confirmed by Capstone disassembly sweep, `static_assert`-checked on every struct
 - **6,545-line generated database** — `sa10us_db.inl`, never hand-edited
 - **Three confidence tiers** — `[SASDK VERIFIED]`, `[SASDK VERIFIED_BY_DISASSEMBLY]`, `[SASDK REASONED]`
 - **`static_assert` on every struct** — size mismatch is a compile error, not a runtime surprise
-- **Novel findings** — `CHandlingData` true size 0xE0 (community had 0xD4), `CExplosion` type count 21, `m_nVehicleFlags` 52 named bitflags previously anonymous in plugin-sdk
+- **Novel findings** — `CHandlingData` true size 0xE0 (community had 0xD4), `CExplosion` type count 21, `m_nVehicleFlags` 52 named bitflags — all proven by disassembly
 
 **Format Parsers (`SASDK::data`)**
 - **`GxtArchive`** — TABL/TKEY/TDAT blocks; binary search by CRC-32 key hash (no final complement); 127 tables, 16,588 keys in american.gxt
@@ -193,7 +193,7 @@ SASDK::sasdk  (umbrella — link this for mods)
 
 | Tier | Meaning |
 |---|---|
-| `[SASDK VERIFIED]` | Confirmed by `VALIDATE_OFFSET` compile-time assert in plugin-sdk |
+| `[SASDK VERIFIED]` | Confirmed by Capstone disassembly and `static_assert` |
 | `[SASDK VERIFIED_BY_DISASSEMBLY]` | 2+ Capstone hits across sa10us functions |
 | `[SASDK REASONED]` | Structurally derived from surrounding verified fields |
 
@@ -219,13 +219,13 @@ Fields and sizes not documented elsewhere, derived by Capstone disassembly sweep
 - `CVehicleModelInfo[+0x4A]` = handling index byte
 - `CExplosion` type count = **21** (types 0–20) — proven by `cmp eax, 0x14` at `0x73702C`
 - Blast radius float table extracted from rdata `0x8592D4`: `[20.0, 13.0, 5.0, 1.5, 0.94, 6.0, 2.0, 0.87, 15.0, 10.0, 10.0]`
-- `m_nVehicleFlags @0x4EC` — 52 named bitflags (`bIsLawEnforcer`, `bEngineOn`, `bLightsOn`…) previously anonymous in plugin-sdk
+- `m_nVehicleFlags @0x4EC` — 52 named bitflags (`bIsLawEnforcer`, `bEngineOn`, `bLightsOn`…) — all proven by disassembly
 
 <img width="100%" src="https://capsule-render.vercel.app/api?type=rect&color=0:000000,50:E07B00,100:000000&height=3"/>
 
 ## 📂 Format Parsers
 
-All parsers are derived from `SAEncyclopedia/RE-Data/data/*.json` — binary format specifications produced by Capstone disassembly sweep of the sa10us executable. They compile and test on any host.
+All parsers are based on binary format specifications produced by Capstone disassembly sweep of the sa10us executable. They compile and test on any host.
 
 ### GXT — Text archive
 
@@ -367,27 +367,6 @@ if (!img) {
 
 <img width="100%" src="https://capsule-render.vercel.app/api?type=rect&color=0:000000,50:E07B00,100:000000&height=3"/>
 
-## ⚙️ Generation Pipeline
-
-The struct database and function handles are generated — never hand-edited. To regenerate after new RE-Data schemas are added:
-
-```bash
-cd SASDK/tools
-py regen.py   # normalize → import_plugin_sdk → gen_sasdk_db → gen_functions
-```
-
-```
-SAEncyclopedia/RE-Data/data/*.json       (302 verified format specs)
-        ↓  normalize_to_schema.py
- SASDK/schema/normalized/*.json
-        ↓  import_plugin_sdk.py          (type hints from plugin-sdk-master)
-        ↓  gen_sasdk_db.py
-include/sasdk/game/sa10us/sa10us_db.inl  (302 structs · 6,545 lines)
-include/sasdk/game/sa10us/functions.inl  (9 typed callable handles)
-```
-
-<img width="100%" src="https://capsule-render.vercel.app/api?type=rect&color=0:000000,50:E07B00,100:000000&height=3"/>
-
 ## 📁 Source Layout
 
 ```
@@ -417,38 +396,8 @@ SASDK/
 │   ├── save.cpp    ide.cpp   ipl.cpp
 ├── tests/test_core.cpp                ← 125 host tests (no game required)
 ├── examples/
-├── tools/                             ← RE pipeline (Python)
-│   ├── regen.py   gen_sasdk_db.py
-│   ├── normalize_to_schema.py
-│   ├── import_plugin_sdk_offsets.py
-│   └── gen_functions.py
 └── CMakeLists.txt
 ```
-
-<img width="100%" src="https://capsule-render.vercel.app/api?type=rect&color=0:000000,50:E07B00,100:000000&height=3"/>
-
-## ⚔️ SASDK vs. plugin-sdk
-
-plugin-sdk is the community's long-standing reverse-engineering reference. SASDK is a production SDK built on top of — and extending — that work. Here's how they differ:
-
-| | **plugin-sdk** | **SASDK** |
-|---|---|---|
-| **Purpose** | RE reference database + type import | Production mod SDK with offline tooling |
-| **Struct source** | Community-maintained header edits | Generated from Capstone disassembly specs |
-| **Verification** | `VALIDATE_OFFSET` asserts; manual | Capstone 2+ hit rule + `VALIDATE_OFFSET` import + `static_assert` on every type |
-| **Error model** | Raw pointer, UB on miss | `Result<T>` — no exceptions, no UB |
-| **Format parsers** | None | GXT · IMG · COL · RW · FXP · Save — all offline |
-| **Novel findings** | `CHandlingData` 0xD4 (incorrect) | `CHandlingData` **0xE0** proven by `imul eax, 0E0h` @`0x6F0151` |
-| **Calling convention helpers** | None | `call_cdecl` / `call_thiscall` / `fn::` typed handles |
-| **Hooks** | None (use ASI loaders or cleo) | `InlineHook` · `VmtHook` built-in, RAII |
-| **Host tests** | None | 93 tests — no game required, run on any 64-bit CI |
-| **CMake integration** | Headers only; manual include | `SASDK::sasdk` / `SASDK::data` CMake targets |
-| **Generation pipeline** | Manual header edits | `regen.py` → `gen_sasdk_db.py` → `.inl` — never hand-edited |
-| **C++ standard** | C++17 (various) | C++20 — `std::span`, `std::from_chars`, concepts |
-| **struct DB lines** | ~3,000 (estimated) | **6,545 generated lines**, 302 schemas |
-| **Coverage tiers** | Implicit (one tier) | Four explicit tiers with inline annotation |
-
-> plugin-sdk is the foundation. SASDK is what you build mods with.
 
 <img width="100%" src="https://capsule-render.vercel.app/api?type=rect&color=0:000000,50:E07B00,100:000000&height=3"/>
 

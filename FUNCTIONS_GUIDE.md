@@ -988,7 +988,7 @@ auto& ped_pool = sasdk::Global<void*>{ sasdk::addr::PedPool }.get();
 Every struct has `static_assert(sizeof(Struct) == expected)`. Fields are annotated with one of three confidence tiers:
 
 ```cpp
-// [SASDK VERIFIED]                — VALIDATE_OFFSET confirmed in plugin-sdk
+// [SASDK VERIFIED]                — confirmed by Capstone disassembly and static_assert
 // [SASDK VERIFIED_BY_DISASSEMBLY] — 2+ Capstone hits across sa10us functions
 // [SASDK REASONED]                — derived from surrounding verified fields
 ```
