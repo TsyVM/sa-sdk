@@ -23,6 +23,9 @@
 [![RW](https://img.shields.io/badge/RW-RenderWare%20chunks-E07B00?style=flat-square&labelColor=000000)](#rwstream--rwhpp)
 [![FXP](https://img.shields.io/badge/FXP-particle%20project-E07B00?style=flat-square&labelColor=000000)](#fxparchive--fxphpp)
 [![Save](https://img.shields.io/badge/Save-block%20reader-E07B00?style=flat-square&labelColor=000000)](#savearchive--savehpp)
+[![IDE](https://img.shields.io/badge/IDE-item%20definitions-E07B00?style=flat-square&labelColor=000000)](#idearchive--idehpp)
+[![IPL](https://img.shields.io/badge/IPL-item%20placement-E07B00?style=flat-square&labelColor=000000)](#iplarchive--iplhpp)
+[![Pool](https://img.shields.io/badge/Pool-CPed%20%C2%B7%20CVehicle%20%C2%B7%20CObject-E07B00?style=flat-square&labelColor=000000)](#poolview--poolhpp)
 [![Hooks](https://img.shields.io/badge/Hooks-inline%20%C2%B7%20vmt-E07B00?style=flat-square&labelColor=000000)](#-runtime-layer)
 [![sa10us](https://img.shields.io/badge/sa10us-struct%20DB-E07B00?style=flat-square&labelColor=000000)](#-struct-database)
 
@@ -36,9 +39,9 @@
 
 [Error Handling](#-error-handling--resulthpp) · [GxtArchive](#gxtarchive--gxthpp) · [ImgArchive](#imgarchive--imghpp) · [ColArchive](#colarchive--colhpp)
 
-[RwStream / RwChunk](#rwstream--rwhpp) · [FxpArchive](#fxparchive--fxphpp) · [SaveArchive](#savearchive--savehpp)
+[RwStream / RwChunk](#rwstream--rwhpp) · [FxpArchive](#fxparchive--fxphpp) · [SaveArchive](#savearchive--savehpp) · [IdeArchive](#idearchive--idehpp) · [IplArchive](#iplarchive--iplhpp)
 
-[Address · Module](#address--module--addresshpp) · [Hooks](#hooks--hookhpp) · [Invoke](#invoke--invokehpp) · [Global / ArrayView](#global--arrayview--globalhpp)
+[Address · Module](#address--module--addresshpp) · [Hooks](#hooks--hookhpp) · [Invoke](#invoke--invokehpp) · [Global / ArrayView](#global--arrayview--globalhpp) · [PoolView](#poolview--poolhpp)
 
 [Struct Database](#-struct-database) · [fn:: Handles](#fn-function-handles--functionsinl) · [addr:: Globals](#addr-global-addresses--addresseshpp)
 
@@ -586,6 +589,191 @@ if (stats) {
 }
 ```
 
+
+<parameter name="new_string"><img width="100%" src="https://capsule-render.vercel.app/api?type=rect&color=0:000000,50:E07B00,100:000000&height=3"/>
+
+## IdeArchive — `ide.hpp`
+
+GTA:SA item definition file parser. Handles all sections: `objs`, `tobj`, `weap`, `hier`, `anim`, and `2dfx` (2dfx bodies are consumed and discarded; the section is parsed without error).
+
+### Types
+
+```cpp
+struct IdeObject     { int32_t id; char model_name[24]; char txd_name[24]; float draw_dist; uint32_t flags; };
+struct IdeTimeObject : IdeObject { uint8_t time_on; uint8_t time_off; };
+struct IdeWeapon     { int32_t id; char model_name[24]; char txd_name[24]; char anim_name[24]; float draw_dist; uint32_t flags; };
+struct IdeHier       { int32_t id; char model_name[24]; char txd_name[24]; };
+struct IdeAnim       { int32_t id; char model_name[24]; char txd_name[24]; char anim_name[24]; float draw_dist; uint32_t flags; };
+```
+
+### `IdeArchive`
+
+```cpp
+class IdeArchive {
+public:
+    static Result<IdeArchive> parse(std::string_view text) noexcept;
+
+    // Span access — zero-copy view over internal storage
+    std::span<const IdeObject>     objects()      const noexcept;
+    std::span<const IdeTimeObject> time_objects() const noexcept;
+    std::span<const IdeWeapon>     weapons()      const noexcept;
+    std::span<const IdeHier>       hiers()        const noexcept;
+    std::span<const IdeAnim>       anims()        const noexcept;
+
+    // Find by numeric model ID (returns nullptr if not found)
+    const IdeObject*     find_object(int32_t id)      const noexcept;
+    const IdeTimeObject* find_time_object(int32_t id) const noexcept;
+    const IdeWeapon*     find_weapon(int32_t id)      const noexcept;
+    const IdeHier*       find_hier(int32_t id)        const noexcept;
+    const IdeAnim*       find_anim(int32_t id)        const noexcept;
+
+    // Find by name (case-insensitive) across all sections; out_sec = "objs"|"tobj"|"weap"|"hier"|"anim"
+    const void* find_by_name(std::string_view model_name, std::string_view& out_sec) const noexcept;
+
+    size_t total_entries() const noexcept;
+};
+```
+
+### Example
+
+```cpp
+std::string text = load_text("data/maps/generic/vegepart.ide");
+auto ide = sasdk::IdeArchive::parse(text);
+if (!ide) return;
+
+// Find a static object by ID
+const sasdk::IdeObject* obj = ide->find_object(615);
+if (obj) printf("Model: %s  DrawDist: %.1f\n", obj->model_name, obj->draw_dist);
+
+// Find across all sections by name
+std::string_view section;
+const void* entry = ide->find_by_name("od_bskball", section);
+if (entry) printf("Found in section: %.*s\n", (int)section.size(), section.data());
+
+// Iterate every time-gated model
+for (const auto& t : ide->time_objects())
+    printf("[%d] %s on=%d off=%d\n", t.id, t.model_name, t.time_on, t.time_off);
+```
+
+<img width="100%" src="https://capsule-render.vercel.app/api?type=rect&color=0:000000,50:E07B00,100:000000&height=3"/>
+
+## IplArchive — `ipl.hpp`
+
+GTA:SA item placement file parser. Handles text-format IPLs from `data/maps/`. Sections: `inst`, `cull`, `grge`, `enex`, `pick`, `cars`. Other sections (`path`, `zone`, `mult`, `tcyc`, `auzo`, `occl`) are consumed without error.
+
+### Types
+
+```cpp
+struct IplInst { int32_t id; char model_name[24]; int32_t interior_id; float x,y,z; float qx,qy,qz,qw; };
+struct IplCull { float cx,cy,cz; float unk[7]; };
+struct IplGrge { int32_t id; float x,y,z; float x_size,y_size,z_angle; uint8_t door_type,flags; char name[32]; };
+struct IplEnex { float ex,ey,ez; float x_angle,x_size,y_size; float ix,iy,iz,i_angle; int32_t interior_id; uint32_t sky_color,flags; char name[32]; };
+struct IplPick { int32_t model_id; float x,y,z; };
+struct IplCar  { float x,y,z,angle; int32_t model_id; uint8_t primary_color,secondary_color,force_spawn,alarm,locks,unk1,unk2; };
+```
+
+### `IplArchive`
+
+```cpp
+class IplArchive {
+public:
+    static Result<IplArchive> parse(std::string_view text) noexcept;
+
+    std::span<const IplInst> instances()  const noexcept;
+    std::span<const IplCull> culls()      const noexcept;
+    std::span<const IplGrge> garages()    const noexcept;
+    std::span<const IplEnex> entrances()  const noexcept;
+    std::span<const IplPick> pickups()    const noexcept;
+    std::span<const IplCar>  cars()       const noexcept;
+
+    const IplInst* find_instance(int32_t model_id)            const noexcept;
+    const IplInst* find_instance(std::string_view model_name) const noexcept;
+
+    size_t total_entries() const noexcept;
+};
+```
+
+### Example
+
+```cpp
+std::string text = load_text("data/maps/LA/LAn.ipl");
+auto ipl = sasdk::IplArchive::parse(text);
+if (!ipl) return;
+
+printf("Instances: %zu\n", ipl->instances().size());
+
+// Find by model ID
+const sasdk::IplInst* inst = ipl->find_instance(1337);
+if (inst) printf("At %.1f %.1f %.1f (interior %d)\n", inst->x, inst->y, inst->z, inst->interior_id);
+
+// Enumerate all parked cars
+for (const auto& car : ipl->cars())
+    printf("Model %d at (%.1f %.1f %.1f) angle=%.1f\n", car.model_id, car.x, car.y, car.z, car.angle);
+```
+
+<img width="100%" src="https://capsule-render.vercel.app/api?type=rect&color=0:000000,50:E07B00,100:000000&height=3"/>
+
+## PoolView — `pool.hpp`
+
+Read-only typed iterator over a live GTA:SA `CPool<T>`. Internal layout verified at `CPools::GetRef @0x54F420`. Available with `#define SASDK_RUNTIME` — compile into the 32-bit `.asi` only.
+
+```cpp
+// CPool<T> layout (verified by disassembly):
+//   offset 0: T*       m_pObjects  (contiguous object array)
+//   offset 4: uint8_t* m_byteMap   (flag per slot; bit 7 = 1 → free, 0 → live)
+
+template<typename T>
+class PoolView {
+public:
+    explicit PoolView(void* pool_ptr, uint32_t capacity) noexcept;
+
+    bool     valid()      const noexcept;
+    uint32_t capacity()   const noexcept;
+    uint32_t count_live() const noexcept;
+
+    // Iterate every live slot. fn(T& obj) — return false to stop early.
+    template<typename Fn>
+    void for_each(Fn&& fn) const noexcept;
+
+    // Pointer to slot by index, or nullptr if the slot is free.
+    T* at(uint32_t slot) const noexcept;
+
+    // Resolve a pool handle (slot << 8 | byteMap[slot]) to a live object, or nullptr.
+    T* from_handle(uint32_t handle) const noexcept;
+};
+```
+
+### Pre-built pool accessors (sa10us VAs, capacity verified by disassembly)
+
+```cpp
+namespace sasdk::sa10us {
+    PoolView<CPed>     ped_pool()     noexcept;  // 140 slots @ 0xB74490
+    PoolView<CVehicle> vehicle_pool() noexcept;  // 110 slots @ 0xB74494
+    PoolView<CObject>  object_pool()  noexcept;  // 350 slots @ 0xB7449C
+}
+```
+
+### Example
+
+```cpp
+// Count all live peds
+auto peds = sasdk::sa10us::ped_pool();
+printf("Live peds: %u / %u\n", peds.count_live(), peds.capacity());
+
+// Find the first vehicle that is on fire
+const sasdk::CVehicle* burning = nullptr;
+sasdk::sa10us::vehicle_pool().for_each([&](sasdk::CVehicle& v) {
+    if (v.m_nVehicleFlags & (1u << 10)) {  // bIsOnFire — bit 10
+        burning = &v;
+        return false;  // stop iteration
+    }
+    return true;
+});
+
+// Resolve a handle from a script
+auto obj = sasdk::sa10us::object_pool().from_handle(script_handle);
+```
+
 <img width="100%" src="https://capsule-render.vercel.app/api?type=rect&color=0:000000,50:E07B00,100:000000&height=3"/>
 
 ## 🔧 Runtime Layer
@@ -797,13 +985,12 @@ auto& ped_pool = sasdk::Global<void*>{ sasdk::addr::PedPool }.get();
 
 `include/sasdk/game/sa10us/sa10us_db.inl` — 302 structs, 6,545 lines, generated. Include via `<sasdk/game/sa10us/sa10us.hpp>` or the umbrella `<sasdk/sasdk.hpp>`.
 
-Every struct has `static_assert(sizeof(Struct) == expected)`. Fields are annotated with one of four confidence tiers:
+Every struct has `static_assert(sizeof(Struct) == expected)`. Fields are annotated with one of three confidence tiers:
 
 ```cpp
 // [SASDK VERIFIED]                — VALIDATE_OFFSET confirmed in plugin-sdk
 // [SASDK VERIFIED_BY_DISASSEMBLY] — 2+ Capstone hits across sa10us functions
 // [SASDK REASONED]                — derived from surrounding verified fields
-// [SASDK OPEN]                    — not yet verified; use with caution
 ```
 
 ### Selected struct layouts
@@ -1066,6 +1253,9 @@ void get_player_pos(float& out_x, float& out_y, float& out_z) noexcept;
 | Traverse DFF/TXD/IFP chunks | `rw.hpp` | `sasdk` |
 | Parse FXP particle project | `fxp.hpp` | `sasdk` |
 | Read save file blocks | `save.hpp` | `sasdk` |
+| Parse IDE item definitions | `ide.hpp` | `sasdk` |
+| Parse IPL item placement | `ipl.hpp` | `sasdk` |
+| Iterate live game pools | `core/pool.hpp` | `sasdk` (SASDK_RUNTIME) |
 | Error type | `core/result.hpp` | `sasdk` |
 | Module rebase | `core/address.hpp` | `sasdk` |
 | Inline/VMT hooks | `core/hook.hpp` | `sasdk::rt` |

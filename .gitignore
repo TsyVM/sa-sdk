@@ -1,0 +1,50 @@
+# ---- Build output -----------------------------------------------------------
+/build/
+build*/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+*.o
+*.obj
+*.a
+*.lib
+*.exe
+*.dll
+*.pdb
+*.ilk
+*.exp
+
+# ---- Intermediate RE-pipeline files (do NOT ship to GitHub) ----------------
+# These are generated artifacts from the reverse-engineering tools.  The
+# source of truth is SAEncyclopedia/RE-Data/data/*.json; the generated
+# normalized schemas are an intermediate; only the final generated headers
+# in include/ are shipped.
+/schema/normalized/
+/docs/structural/
+/verified_structural/
+
+# ---- Shipping archive (built externally) -----------------------------------
+/release/
+*.zip
+
+# ---- Python pipeline cache -------------------------------------------------
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# ---- Verification / scan reports (working artifacts, not source) -----------
+/scan_offset_report.md
+/function_catalogue.verification.md
+/SASDK-READINESS-REPORT.md
+/PARTIAL_FACTS.md
+/sasdk_vanhooks.log
+
+# ---- Editor / OS -----------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db

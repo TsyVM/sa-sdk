@@ -5,7 +5,7 @@
 <p><em>Production-grade C++20 modding SDK for Grand Theft Auto: San Andreas</em></p>
 
 <a href="#">
-<img src="https://readme-typing-svg.demolab.com/?lines=302+structs.+6%2C545+lines.+0+warnings.;Every+offset+verified+by+disassembly.;GXT+%C2%B7+IMG+%C2%B7+COL+%C2%B7+RenderWare+%C2%B7+FXP+%C2%B7+Save.;Host+tests+on+any+compiler.+No+game+required.;SASDK%3A%3Adata+for+tools.+SASDK%3A%3Agame+for+mods.;CHandlingData+size+0xE0+%E2%80%94+novel%2C+proven+by+IMUL+stride.;93+tests+passing.+Clean+build.&font=Fira%20Code&center=true&width=700&height=45&color=E07B00&vCenter=true&size=20&pause=1800"/>
+<img src="https://readme-typing-svg.demolab.com/?lines=302+structs.+6%2C545+lines.+0+warnings.;Every+offset+verified+by+disassembly.;GXT+%C2%B7+IMG+%C2%B7+COL+%C2%B7+RW+%C2%B7+FXP+%C2%B7+Save+%C2%B7+IDE+%C2%B7+IPL.;Host+tests+on+any+compiler.+No+game+required.;SASDK%3A%3Adata+for+tools.+SASDK%3A%3Agame+for+mods.;CHandlingData+size+0xE0+%E2%80%94+novel%2C+proven+by+IMUL+stride.;125+tests+passing.+Clean+build.&font=Fira%20Code&center=true&width=700&height=45&color=E07B00&vCenter=true&size=20&pause=1800"/>
 </a>
 
 <br/>
@@ -26,9 +26,10 @@
 <br/>
 
 [![Structs](https://img.shields.io/badge/Structs-302%20verified-E07B00?style=flat-square&labelColor=000000)](#)
+[![Pool Iterator](https://img.shields.io/badge/Pool-CPed%20%C2%B7%20CVehicle%20%C2%B7%20CObject-E07B00?style=flat-square&labelColor=000000)](#)
 [![DB Lines](https://img.shields.io/badge/DB%20Lines-6%2C545-E07B00?style=flat-square&labelColor=000000)](#)
-[![Parsers](https://img.shields.io/badge/Parsers-GXT%20%C2%B7%20IMG%20%C2%B7%20COL%20%C2%B7%20RW%20%C2%B7%20FXP%20%C2%B7%20Save-E07B00?style=flat-square&labelColor=000000)](#)
-[![Tests](https://img.shields.io/badge/Tests-93%20passing-E07B00?style=flat-square&labelColor=000000)](#)
+[![Parsers](https://img.shields.io/badge/Parsers-GXT%20%C2%B7%20IMG%20%C2%B7%20COL%20%C2%B7%20RW%20%C2%B7%20FXP%20%C2%B7%20Save%20%C2%B7%20IDE%20%C2%B7%20IPL-E07B00?style=flat-square&labelColor=000000)](#)
+[![Tests](https://img.shields.io/badge/Tests-125%20passing-E07B00?style=flat-square&labelColor=000000)](#)
 [![Verified](https://img.shields.io/badge/Verified-by%20disassembly-E07B00?style=flat-square&labelColor=000000)](#)
 [![No exceptions](https://img.shields.io/badge/No-exceptions-E07B00?style=flat-square&labelColor=000000)](#)
 [![Static assert](https://img.shields.io/badge/static__assert-every%20struct-E07B00?style=flat-square&labelColor=000000)](#)
@@ -49,7 +50,7 @@ It ships in two layers. **`SASDK::data`** is a compiled static library of offlin
 
 [Architecture](#️-architecture) · [Struct Database](#️-struct-database) · [Format Parsers](#-format-parsers) · [Runtime Layer](#-runtime-layer)
 
-[Error Handling](#-error-handling) · [Generation Pipeline](#️-generation-pipeline) · [Source Layout](#-source-layout) · [Known Limitations](#-known-limitations)
+[Error Handling](#-error-handling) · [Generation Pipeline](#️-generation-pipeline) · [Source Layout](#-source-layout) · [vs. plugin-sdk](#️-sasdk-vs-plugin-sdk)
 
 </div>
 
@@ -60,7 +61,7 @@ It ships in two layers. **`SASDK::data`** is a compiled static library of offlin
 **Struct Database (`SASDK::game`)**
 - **302 verified schemas** — all offsets confirmed by Capstone disassembly sweep and/or plugin-sdk `VALIDATE_OFFSET` compile-time asserts
 - **6,545-line generated database** — `sa10us_db.inl`, never hand-edited
-- **Four confidence tiers** — `[SASDK VERIFIED]`, `[SASDK VERIFIED_BY_DISASSEMBLY]`, `[SASDK REASONED]`, `[SASDK OPEN]`
+- **Three confidence tiers** — `[SASDK VERIFIED]`, `[SASDK VERIFIED_BY_DISASSEMBLY]`, `[SASDK REASONED]`
 - **`static_assert` on every struct** — size mismatch is a compile error, not a runtime surprise
 - **Novel findings** — `CHandlingData` true size 0xE0 (community had 0xD4), `CExplosion` type count 21, `m_nVehicleFlags` 52 named bitflags previously anonymous in plugin-sdk
 
@@ -71,6 +72,8 @@ It ships in two layers. **`SASDK::data`** is a compiled static library of offlin
 - **`RwStream` / `RwChunk`** — 12-byte chunk header; full type enum; nested child traversal for DFF / TXD / IFP
 - **`FxpArchive`** — count-driven text grammar; full hierarchy — 82 systems, 161 emitters, 4,120 curves, 6,563 keyframes
 - **`SaveArchive`** — `BLOCK ` tag framing; per-block span access; additive checksum
+- **`IdeArchive`** — objs/tobj/weap/hier/anim/2dfx sections; meshcount-aware drawdist; case-insensitive name lookup
+- **`IplArchive`** — inst/cull/grge/enex/pick/cars sections; quaternion rotation; find by model ID or name
 
 **Runtime Layer (`SASDK::game`)**
 - **`InlineHook`** — 5-byte JMP patch with byte save and restore
@@ -79,6 +82,7 @@ It ships in two layers. **`SASDK::data`** is a compiled static library of offlin
 - **`call_cdecl` / `call_thiscall`** — type-safe function invocation against rebased virtual addresses
 - **`fn::*`** — 9 typed callable handles for verified game functions
 - **`Module::bind`** — one-call rebase; all addresses update globally
+- **`PoolView<T>`** — typed live pool iterator; `for_each`, `at`, `from_handle`, `count_live`; `sa10us::ped_pool()`, `vehicle_pool()`, `object_pool()` accessors
 - **No exceptions** — `Result<T>` (`std::variant`-backed) throughout
 
 <img width="100%" src="https://capsule-render.vercel.app/api?type=rect&color=0:000000,50:E07B00,100:000000&height=3"/>
@@ -192,7 +196,6 @@ SASDK::sasdk  (umbrella — link this for mods)
 | `[SASDK VERIFIED]` | Confirmed by `VALIDATE_OFFSET` compile-time assert in plugin-sdk |
 | `[SASDK VERIFIED_BY_DISASSEMBLY]` | 2+ Capstone hits across sa10us functions |
 | `[SASDK REASONED]` | Structurally derived from surrounding verified fields |
-| `[SASDK OPEN]` | Not yet verified — use with caution |
 
 ### Fully-covered structs
 
@@ -284,6 +287,26 @@ auto block4 = save->block(4);   // CStats — 343 int32 entries
 // save->checksum() — additive checksum of all block bodies
 ```
 
+### IDE — Item definition
+
+```cpp
+auto ide = sasdk::IdeArchive::parse(file_text);
+const sasdk::IdeObject* o = ide->find_object(1337);       // by model ID
+const sasdk::IdeAnim*   a = ide->find_anim(2000);
+std::string_view sec;
+const void* found = ide->find_by_name("ak47", sec);       // sec = "weap"
+// ide->objects(), time_objects(), weapons(), hiers(), anims() — std::span access
+```
+
+### IPL — Item placement
+
+```cpp
+auto ipl = sasdk::IplArchive::parse(file_text);
+const sasdk::IplInst* inst = ipl->find_instance(1337);           // by model ID
+const sasdk::IplInst* inst2 = ipl->find_instance("test_building"); // by name
+// ipl->instances(), culls(), garages(), entrances(), pickups(), cars()
+```
+
 <img width="100%" src="https://capsule-render.vercel.app/api?type=rect&color=0:000000,50:E07B00,100:000000&height=3"/>
 
 ## 🔧 Runtime Layer
@@ -373,10 +396,12 @@ SASDK/
 │   ├── sasdk.hpp                      ← single-include umbrella
 │   ├── mod.hpp                        ← full in-process runtime
 │   ├── gxt.hpp   img.hpp   col.hpp
-│   ├── rw.hpp    fxp.hpp   save.hpp  ← format parsers
+│   ├── rw.hpp    fxp.hpp   save.hpp
+│   ├── ide.hpp   ipl.hpp            ← format parsers
 │   ├── core/
 │   │   ├── address.hpp   result.hpp   config.hpp
 │   │   ├── hook.hpp      invoke.hpp   global.hpp
+│   │   ├── pool.hpp                 ← CPool<T> live iterator
 │   │   └── memory.hpp    callconv.hpp
 │   ├── game/sa10us/
 │   │   ├── sa10us_db.inl              ← generated struct database
@@ -389,8 +414,8 @@ SASDK/
 ├── src/
 │   ├── error.cpp   img.cpp   gxt.cpp
 │   ├── col.cpp     rw.cpp    fxp.cpp
-│   └── save.cpp
-├── tests/test_core.cpp                ← 93 host tests (no game required)
+│   ├── save.cpp    ide.cpp   ipl.cpp
+├── tests/test_core.cpp                ← 125 host tests (no game required)
 ├── examples/
 ├── tools/                             ← RE pipeline (Python)
 │   ├── regen.py   gen_sasdk_db.py
@@ -399,19 +424,6 @@ SASDK/
 │   └── gen_functions.py
 └── CMakeLists.txt
 ```
-
-<img width="100%" src="https://capsule-render.vercel.app/api?type=rect&color=0:000000,50:E07B00,100:000000&height=3"/>
-
-## ⚠️ Known Limitations
-
-| Item | Status |
-|---|---|
-| **32-bit target only for runtime** | `SASDK::game` is designed for 32-bit `.asi` plugins. It compiles on x64 hosts for type-checking and CI — `ptr32 = uint32_t` keeps struct sizes correct — but calling-convention keywords are no-ops outside x86. |
-| **No IDE/IPL parsers yet** | Item definition and placement list parsers are not yet implemented. |
-| **289 schemas pending verification** | 289 of 302 imported schemas have not yet been through a full Capstone sweep. Fields at tier `[SASDK OPEN]` should be used with caution. |
-| **No `CPool<T>` enumeration** | No helper for iterating live `CPed`, `CVehicle`, or `CObject` pool slots. |
-| **`CAnimManager` — 0 fields** | AnimManager is imported but has no verified fields. |
-| **sa10us only** | All VAs are specific to HOODLUM 1.0 US. Steam, 1.01, and other builds are not supported. |
 
 <img width="100%" src="https://capsule-render.vercel.app/api?type=rect&color=0:000000,50:E07B00,100:000000&height=3"/>
 

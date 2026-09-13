@@ -45,6 +45,8 @@ add_library(sasdk_data STATIC
     src/rw.cpp
     src/save.cpp
     src/fxp.cpp
+    src/ide.cpp
+    src/ipl.cpp
 )
 add_library(SASDK::data ALIAS sasdk_data)
 
